@@ -1,4 +1,8 @@
 # Telegram Pizza Chatbot - Haskell Telegram Bot
+[![Build Status](https://travis-ci.org/paradigmas-2018-1/telegram-pizza-chatbot.svg?branch=master)](https://travis-ci.org/paradigmas-2018-1/telegram-pizza-chatbot)
+[![GHC version](https://img.shields.io/badge/Haskell-2010-blue.svg)](#)
+[![Cabal version](https://img.shields.io/badge/Cabal-1.10-orange.svg)](#)
+[![Cabal version](https://img.shields.io/badge/GHC-8.2.2-yellow.svg)](#)
 
 ## Introduction
 This is a chatbot project for Telegram, written in Haskell.  

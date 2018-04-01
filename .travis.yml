@@ -1,0 +1,49 @@
+sudo: true
+language: haskell
+
+
+git:
+  depth: 5
+
+
+cache:
+  directories:
+  - "$HOME/.stack"
+  - "$PWD/.stack-work"
+
+
+matrix:
+  include:
+
+  - ghc: 8.2.2
+    env: GHCVER='8.2.2' STACK_YAML="$PWD/stack.yaml"
+
+
+addons:
+  apt:
+    sources:
+      - sourceline: 'ppa:hvr/ghc'
+    packages:
+      - libgmp-dev
+      - cabal-install-2.0
+
+
+before_install:
+
+  - mkdir -p “$HOME/.local/bin”
+  - export PATH="$HOME/.local/bin:$PATH"
+  - travis_retry curl -sSL https://get.haskellstack.org/ | sh 
+  - stack --version
+
+
+install:
+
+  - travis_wait 30 stack setup --no-terminal
+  - stack ghc -- --version
+
+  - travis_wait 40 stack build --no-terminal --only-dependencies
+
+
+script:
+
+  - travis_wait 40 stack build --no-terminal

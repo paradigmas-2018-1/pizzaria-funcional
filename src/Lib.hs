@@ -96,7 +96,7 @@ handleMessage msg = do
       sendHelpMessage = sendMessageM (helpMessage chatId) >> return ()
       sendSizeOptionsMessage = sendMessageM (sizeOptionsMessage chatId) >> return ()
 
-      sendFlavours flavours = mapM_ sendMessageM $ map (buildFlavourMessage chatId) flavours
+      sendFlavours flavours = mapM_ sendPhotoM $ map (buildFlavourMessage chatId) flavours
 
       onCommand (Just (T.stripPrefix "/pedir" -> Just _)) = sendSizeOptionsMessage
       onCommand (Just (T.stripPrefix "/ajuda" -> Just _)) = sendHelpMessage
@@ -144,10 +144,17 @@ helpMessage userId = sendMessageRequest userId $ T.unlines
 -- [(Flavour), (Image, Ingredients, Price)]
 allFlavours :: [(Text, (Text, Text, Int))]
 allFlavours =
-  [ ("Calabresa", ("Imagem", "Descrição", 100))
-  , ("Mussarela", ("Image", "Descrição", 200))
-  , ("Banana", ("Image", "Descrição", 300))
+  [ ("Calabresa", ("https://d3o331zyotmfip.cloudfront.net/img/products/15116057185a1945d6e1d642.49694767.png", "Ingredients", 100))
+  , ("Mussarela", ("https://d3o331zyotmfip.cloudfront.net/img/products/15116058865a19467ea285f0.80350123.png", "Ingredients", 200))
+  , ("Portuguesa", ("https://d3o331zyotmfip.cloudfront.net/img/products/15116059245a1946a4dd73c4.20424311.png", "Ingredients", 300))
   ]
 
 buildFlavourMessage chatId (flavour, (image, ingredients, price)) =
-  sendMessageRequest chatId flavour
+  SendPhotoRequest {
+      photo_chat_id = chatId
+    , photo_photo = image
+    , photo_caption = Just flavour
+    , photo_disable_notification = Nothing
+    , photo_reply_to_message_id = Nothing
+    , photo_reply_markup = Nothing
+  }

@@ -94,7 +94,9 @@ handleMessage msg = do
   let chatId = ChatId $ fromIntegral $ user_id $ fromJust $ from msg
       messageText = text msg
       sendHelpMessage = sendMessageM (helpMessage chatId) >> return ()
+      sendFlavours flavours = mapM_ sendMessageM $ map (buildFlavourMessage chatId) flavours
       onCommand (Just (T.stripPrefix "/ajuda" -> Just _)) = sendHelpMessage
+      onCommand (Just (T.stripPrefix "/sabores" -> Just _)) = sendFlavours allFlavours
       onCommand _ = sendHelpMessage
   liftIO $ runClient (onCommand messageText) telegramToken manager
   return ()
@@ -106,3 +108,15 @@ helpMessage userId = sendMessageRequest userId $ T.unlines
   , "/sabores - lista os sabores de pizza"
   , "/cancelar - um processo de pedido em andamento"
   ]
+
+-- List of Favlours
+-- [(Flavour), (Image, Ingredients, Price)]
+allFlavours :: [(Text, (Text, Text, Int))]
+allFlavours =
+  [ ("Calabresa", ("Imagem", "Descrição", 100))
+  , ("Mussarela", ("Image", "Descrição", 200))
+  , ("Banana", ("Image", "Descrição", 300))
+  ]
+
+buildFlavourMessage chatId (flavour, (image, ingredients, price)) =
+  sendMessageRequest chatId flavour

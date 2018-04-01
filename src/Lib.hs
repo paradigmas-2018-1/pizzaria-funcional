@@ -85,5 +85,24 @@ botServer = handleWebhook
 handleUpdate :: Update -> Bot ()
 handleUpdate update = do
     case update of
-        -- Update { message = Just msg } -> handleMessage msg
+        Update { message = Just msg } -> handleMessage msg
         _ -> liftIO $ putStrLn $ "Handle update failed. " ++ show update
+
+handleMessage :: Message -> Bot ()
+handleMessage msg = do
+  BotConfig{..} <- ask
+  let chatId = ChatId $ fromIntegral $ user_id $ fromJust $ from msg
+      messageText = text msg
+      sendHelpMessage = sendMessageM (helpMessage chatId) >> return ()
+      onCommand (Just (T.stripPrefix "/ajuda" -> Just _)) = sendHelpMessage
+      onCommand _ = sendHelpMessage
+  liftIO $ runClient (onCommand messageText) telegramToken manager
+  return ()
+
+-- Help message from the bot
+helpMessage userId = sendMessageRequest userId $ T.unlines
+  [ "/ajuda - mostra todas as opções do menu"
+  , "/pedir - inicia o processo de pedido"
+  , "/sabores - lista os sabores de pizza"
+  , "/cancelar - um processo de pedido em andamento"
+  ]

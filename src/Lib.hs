@@ -1,40 +1,89 @@
 {-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators   #-}
+{-# LANGUAGE DeriveGeneric   #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Lib
     ( startApp
     , app
     ) where
 
 import Data.Aeson
-import Data.Aeson.TH
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant
+import GHC.Generics hiding (from)
+import Control.Monad.Reader
+import Control.Monad.Except
+import Data.Text (Text)
+import qualified Data.Text as T
+import Network.HTTP.Client (newManager, Manager)
+import Network.HTTP.Client.TLS  (tlsManagerSettings)
+import Data.Maybe
+import Data.Monoid
+import Web.Telegram.API.Bot
+import System.Environment
 
-data User = User
-  { userId        :: Int
-  , userFirstName :: String
-  , userLastName  :: String
-  } deriving (Eq, Show)
+-- Create the API endpoints
+-- "webhook" endpoint will receive updates from the telegram's servers
+type BotAPI =
+     "webhook"
+  :> Capture "secret" Text
+  :> ReqBody '[JSON] Update
+  :> Post '[JSON] ()
 
-$(deriveJSON defaultOptions ''User)
+botApi :: Proxy BotAPI
+botApi = Proxy
 
-type API = "users" :> Get '[JSON] [User]
-
+-- Starts up the APP by reading the env from the System
+-- and defines the initial configuration
 startApp :: IO ()
-startApp = run 8080 app
+startApp = do
+  putStrLn "Starting Pizza Chatbot Server"
+  env <- getEnvironment
+  manager' <- newManager tlsManagerSettings
+  let telegramToken' = fromJust $ lookup "TELEGRAM_PIZZA_CHATBOT_TOKEN" env
+      config = BotConfig
+        { telegramToken = Token $ T.pack $ "bot" <> telegramToken'
+        , manager = manager'
+        }
+  run 8080 $ app config
 
-app :: Application
-app = serve api server
+newtype Bot a = Bot
+  { runBot :: ReaderT BotConfig Handler a
+  } deriving ( Functor, Applicative, Monad, MonadIO,
+               MonadReader BotConfig, MonadError ServantErr)
 
-api :: Proxy API
-api = Proxy
+data BotConfig = BotConfig
+  { telegramToken :: Token
+  , manager :: Manager
+  }
 
-server :: Server API
-server = return users
+app :: BotConfig -> Application
+app config = serve botApi $ initBotServer config
 
-users :: [User]
-users = [ User 1 "Isaac" "Newton"
-        , User 2 "Albert" "Einstein"
-        ]
+initBotServer :: BotConfig -> Server BotAPI
+initBotServer config = enter (transform config) botServer
+    where transform :: BotConfig -> Bot :~> ExceptT ServantErr IO
+          transform config = Nat (flip runReaderT config . runBot)
+
+-- Proccess the received requests
+botServer :: ServerT BotAPI Bot
+botServer = handleWebhook
+  where
+    handleWebhook :: Text -> Update -> Bot ()
+    handleWebhook secret update = do
+      Token token <- asks telegramToken
+      if EQ == compare secret token
+        then handleUpdate update
+        else throwError err403
+
+handleUpdate :: Update -> Bot ()
+handleUpdate update = do
+    case update of
+        -- Update { message = Just msg } -> handleMessage msg
+        _ -> liftIO $ putStrLn $ "Handle update failed. " ++ show update

@@ -94,12 +94,43 @@ handleMessage msg = do
   let chatId = ChatId $ fromIntegral $ user_id $ fromJust $ from msg
       messageText = text msg
       sendHelpMessage = sendMessageM (helpMessage chatId) >> return ()
+      sendSizeOptionsMessage = sendMessageM (sizeOptionsMessage chatId) >> return ()
+
       sendFlavours flavours = mapM_ sendMessageM $ map (buildFlavourMessage chatId) flavours
+
+      onCommand (Just (T.stripPrefix "/pedir" -> Just _)) = sendSizeOptionsMessage
       onCommand (Just (T.stripPrefix "/ajuda" -> Just _)) = sendHelpMessage
       onCommand (Just (T.stripPrefix "/sabores" -> Just _)) = sendFlavours allFlavours
       onCommand _ = sendHelpMessage
   liftIO $ runClient (onCommand messageText) telegramToken manager
   return ()
+
+pizzaSizeOptions :: [(Text)]
+pizzaSizeOptions = ["Pequena", "Média", "Grande", "Gigante"]
+
+sizeOptionsKeyboardButton :: Text -> [KeyboardButton]
+sizeOptionsKeyboardButton text = [keyboardButton text]
+
+-- sizeOptionsKeyboard :: ReplyKeyboardMarkup
+sizeOptionsKeyboard =
+  ReplyKeyboardMarkup {
+      reply_keyboard = map sizeOptionsKeyboardButton pizzaSizeOptions
+    , reply_resize_keyboard = Nothing
+    , reply_one_time_keyboard = Just True
+    , reply_selective = Nothing
+  }
+
+sizeOptionsMessage :: ChatId -> SendMessageRequest
+sizeOptionsMessage chatId =
+  SendMessageRequest {
+      message_chat_id = chatId
+    , message_parse_mode = Nothing
+    , message_disable_web_page_preview = Nothing
+    , message_disable_notification = Nothing
+    , message_reply_to_message_id = Nothing
+    , message_text = "Escolha o tamanho da pizza."
+    , message_reply_markup = Just sizeOptionsKeyboard
+}
 
 -- Help message from the bot
 helpMessage userId = sendMessageRequest userId $ T.unlines

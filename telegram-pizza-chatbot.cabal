@@ -1,13 +1,13 @@
-name:                pizzaria-funcional-bot
+name:                telegram-pizza-chatbot
 version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://github.com/githubuser/pizzaria-funcional-bot#readme
-license:             BSD3
-license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2018 Author name here
+homepage:            https://github.com/paradigmas-2018-1/telegram-pizza-chatbot#readme
+-- license:             BSD3
+-- license-file:        LICENSE
+-- author:              Author name here
+-- maintainer:          example@example.com
+-- copyright:           2018 Author name here
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
@@ -16,7 +16,6 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Lib
-                     , Paths_pizzaria_funcional_bot
   build-depends:       base >= 4.7 && < 5
                      , aeson
                      , servant-server
@@ -30,20 +29,20 @@ library
                      , transformers
   default-language:    Haskell2010
 
-executable pizzaria-funcional-bot-exe
+executable telegram-pizza-chatbot-exe
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
-                     , pizzaria-funcional-bot
+                     , telegram-pizza-chatbot
   default-language:    Haskell2010
 
-test-suite pizzaria-funcional-bot-test
+test-suite telegram-pizza-chatbot-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       base
-                     , pizzaria-funcional-bot
+                     , telegram-pizza-chatbot
                      , hspec
                      , hspec-wai
                      , hspec-wai-json
@@ -53,4 +52,4 @@ test-suite pizzaria-funcional-bot-test
 
 source-repository head
   type:     git
-  location: https://github.com/githubuser/pizzaria-funcional-bot
+  location: https://github.com/paradigmas-2018-1/telegram-pizza-chatbot

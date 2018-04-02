@@ -95,12 +95,14 @@ handleMessage msg = do
       messageText = text msg
       sendHelpMessage = sendMessageM (helpMessage chatId) >> return ()
       sendSizeOptionsMessage = sendMessageM (sizeOptionsMessage chatId) >> return ()
+      sendLocationMessage = sendMessageM (locationMessage chatId) >> return ()
 
       sendFlavours flavours = mapM_ sendPhotoM $ map (buildFlavourMessage chatId) flavours
 
       onCommand (Just (T.stripPrefix "/pedir" -> Just _)) = sendSizeOptionsMessage
       onCommand (Just (T.stripPrefix "/ajuda" -> Just _)) = sendHelpMessage
       onCommand (Just (T.stripPrefix "/sabores" -> Just _)) = sendFlavours allFlavours
+      onCommand (Just (T.stripPrefix "/local" -> Just _)) = sendLocationMessage
       onCommand _ = sendHelpMessage
   liftIO $ runClient (onCommand messageText) telegramToken manager
   return ()
@@ -130,6 +132,36 @@ sizeOptionsMessage chatId =
     , message_reply_to_message_id = Nothing
     , message_text = "Escolha o tamanho da pizza."
     , message_reply_markup = Just sizeOptionsKeyboard
+}
+
+-- Button used for selecting location
+locationKeyboardButton :: [KeyboardButton]
+locationKeyboardButton =
+  [ KeyboardButton {
+      kb_text = "Compartilhar Posição"
+    , kb_request_contact = Nothing
+    , kb_request_location = Just True
+  } ]
+
+-- locationKeyboard :: ReplyKeyboardMarkup
+locationKeyboard =
+  ReplyKeyboardMarkup {
+      reply_keyboard = [ locationKeyboardButton ]
+    , reply_resize_keyboard = Nothing
+    , reply_one_time_keyboard = Just True
+    , reply_selective = Nothing
+}
+
+locationMessage :: ChatId -> SendMessageRequest
+locationMessage userId =
+  SendMessageRequest {
+      message_chat_id = userId
+    , message_parse_mode = Nothing
+    , message_disable_web_page_preview = Nothing
+    , message_disable_notification = Nothing
+    , message_reply_to_message_id = Nothing
+    , message_text = "Informe seu local."
+    , message_reply_markup = Just locationKeyboard
 }
 
 -- Help message from the bot

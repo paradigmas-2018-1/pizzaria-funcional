@@ -50,6 +50,7 @@ startApp = do
       config = BotConfig
         { telegramToken = Token $ T.pack $ "bot" <> telegramToken'
         , manager = manager'
+        , orders = []
         }
   run 8080 $ app config
 
@@ -61,6 +62,7 @@ newtype Bot a = Bot
 data BotConfig = BotConfig
   { telegramToken :: Token
   , manager :: Manager
+  , orders :: [(ChatId, (Text, Text, Int))]
   }
 
 app :: BotConfig -> Application
@@ -104,6 +106,7 @@ handleMessage msg = do
       onCommand (Just (T.stripPrefix "/sabores" -> Just _)) = sendFlavours allFlavours
       onCommand (Just (T.stripPrefix "/local" -> Just _)) = sendLocationMessage
       onCommand _ = sendHelpMessage
+  liftIO $ putStrLn $ show orders
   liftIO $ runClient (onCommand messageText) telegramToken manager
   return ()
 

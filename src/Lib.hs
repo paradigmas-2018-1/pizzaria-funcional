@@ -102,18 +102,11 @@ botServer = handleWebhook
 handleUpdate :: Update -> Bot ()
 handleUpdate update = do
     case update of
+        Update { message = Just Message
+          { location = Just location } } -> handleLocation location
         Update { message = Just msg } -> handleMessage msg
         Update { callback_query = Just query } -> handleCallbackQuery query
         _ -> liftIO $ putStrLn $ "Handle update failed. " ++ show update
-
-handleCallbackQuery :: CallbackQuery -> Bot ()
-handleCallbackQuery query = do
-  BotConfig{..} <- ask
-  -- TODO: Make this function update the actual BotConfig instead of creating
-  -- a x variable.
-  let x  = updateOrder order (cq_data query)
-  liftIO $ putStrLn $ show (x)
-  return ()
 
 updateOrder :: Order -> Maybe Text -> Order
 updateOrder order response
@@ -130,6 +123,24 @@ updateOrder order response
       , price = Nothing
       }
   | otherwise = order
+
+flavorReceivedMessage chatId = sendMessageRequest chatId "A Pizza de Mussarela é deliciosa."
+
+handleCallbackQuery :: CallbackQuery -> Bot ()
+handleCallbackQuery query = do
+  BotConfig{..} <- ask
+  let chatId = ChatId $ fromIntegral $ user_id $ cq_from query
+      dataText = cq_data query
+      sendFlavorReceivedMessage = sendMessageM (flavorReceivedMessage chatId) >> return ()
+
+      onQuery (Just (T.stripPrefix "/size_option" -> Just _)) = sendFlavorReceivedMessage
+  -- TODO: Make this function update the actual BotConfig instead of creating
+  -- a x variable.
+  liftIO $ runClient (onQuery dataText) telegramToken manager
+  -- let x  = updateOrder order (cq_data query)
+  -- liftIO $ putStrLn $ show (x)
+  return ()
+
 
 handleMessage :: Message -> Bot ()
 handleMessage msg = do
@@ -159,7 +170,7 @@ sizeOptionsKeyboardButton text =
   [InlineKeyboardButton {
       ikb_text = text
     , ikb_url = Nothing
-    , ikb_callback_data = Just text
+    , ikb_callback_data = Just "/size_option"
     , ikb_switch_inline_query = Nothing
     , ikb_callback_game = Nothing
     , ikb_switch_inline_query_current_chat = Nothing
@@ -240,3 +251,13 @@ buildFlavourMessage chatId (flavour, (image, ingredients, price)) =
     , photo_reply_to_message_id = Nothing
     , photo_reply_markup = Nothing
   }
+
+locationReceivedMessage chatId = sendMessageRequest chatId "OK! Nós entregamos no seu local."
+
+handleLocation :: Location -> Bot ()
+handleLocation location = do
+  liftIO $ print $ "Location received."
+  -- BotConfig{..} <- ask
+  -- let sendLocationReceivedMessage = sendMessageM (locationReceivedMessage chatId) >> return ()
+  -- liftIO $ runClient (onCommand sendLocationReceivedMessage) telegramToken manager
+  return ()

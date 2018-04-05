@@ -50,7 +50,7 @@ startApp = do
       config = BotConfig
         { telegramToken = Token $ T.pack $ "bot" <> telegramToken'
         , manager = manager'
-        , orders = []
+        , order = createOrder Nothing Nothing Nothing
         }
   run 8080 $ app config
 
@@ -59,10 +59,25 @@ newtype Bot a = Bot
   } deriving ( Functor, Applicative, Monad, MonadIO,
                MonadReader BotConfig, MonadError ServantErr)
 
+data Order = Order
+  {
+    size :: Maybe Text
+  , flavour :: Maybe Text
+  , price :: Maybe Int
+  } deriving (Show, Generic)
+
 data BotConfig = BotConfig
   { telegramToken :: Token
   , manager :: Manager
-  , orders :: [(ChatId, (Text, Text, Int))]
+  , order :: Order
+  }
+
+createOrder :: Maybe Text -> Maybe Text -> Maybe Int -> Order
+createOrder size flavour price =
+  Order {
+    size = size
+  , flavour = flavour
+  , price = price
   }
 
 app :: BotConfig -> Application
@@ -88,7 +103,33 @@ handleUpdate :: Update -> Bot ()
 handleUpdate update = do
     case update of
         Update { message = Just msg } -> handleMessage msg
+        Update { callback_query = Just query } -> handleCallbackQuery query
         _ -> liftIO $ putStrLn $ "Handle update failed. " ++ show update
+
+handleCallbackQuery :: CallbackQuery -> Bot ()
+handleCallbackQuery query = do
+  BotConfig{..} <- ask
+  -- TODO: Make this function update the actual BotConfig instead of creating
+  -- a x variable.
+  let x  = updateOrder order (cq_data query)
+  liftIO $ putStrLn $ show (x)
+  return ()
+
+updateOrder :: Order -> Maybe Text -> Order
+updateOrder order response
+  | isNothing (size order) =
+      Order {
+        size = response
+      , flavour = Nothing
+      , price = Nothing
+      }
+  | isNothing (flavour order) =
+      Order {
+        size = size order
+      , flavour = response
+      , price = Nothing
+      }
+  | otherwise = order
 
 handleMessage :: Message -> Bot ()
 handleMessage msg = do
@@ -106,23 +147,29 @@ handleMessage msg = do
       onCommand (Just (T.stripPrefix "/sabores" -> Just _)) = sendFlavours allFlavours
       onCommand (Just (T.stripPrefix "/local" -> Just _)) = sendLocationMessage
       onCommand _ = sendHelpMessage
-  liftIO $ putStrLn $ show orders
+  liftIO $ putStrLn $ show "Zero"
   liftIO $ runClient (onCommand messageText) telegramToken manager
   return ()
 
 pizzaSizeOptions :: [(Text)]
 pizzaSizeOptions = ["Pequena", "Média", "Grande", "Gigante"]
 
-sizeOptionsKeyboardButton :: Text -> [KeyboardButton]
-sizeOptionsKeyboardButton text = [keyboardButton text]
+sizeOptionsKeyboardButton :: Text -> [InlineKeyboardButton]
+sizeOptionsKeyboardButton text =
+  [InlineKeyboardButton {
+      ikb_text = text
+    , ikb_url = Nothing
+    , ikb_callback_data = Just text
+    , ikb_switch_inline_query = Nothing
+    , ikb_callback_game = Nothing
+    , ikb_switch_inline_query_current_chat = Nothing
+    , ikb_pay = Nothing
+  }]
 
 -- sizeOptionsKeyboard :: ReplyKeyboardMarkup
 sizeOptionsKeyboard =
-  ReplyKeyboardMarkup {
-      reply_keyboard = map sizeOptionsKeyboardButton pizzaSizeOptions
-    , reply_resize_keyboard = Nothing
-    , reply_one_time_keyboard = Just True
-    , reply_selective = Nothing
+  ReplyInlineKeyboardMarkup {
+      reply_inline_keyboard = map sizeOptionsKeyboardButton pizzaSizeOptions
   }
 
 sizeOptionsMessage :: ChatId -> SendMessageRequest

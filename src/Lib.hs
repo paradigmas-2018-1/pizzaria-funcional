@@ -102,9 +102,10 @@ botServer = handleWebhook
 
 handleUpdate :: Update -> Bot ()
 handleUpdate update = do
+    let chatId = ChatId $ fromIntegral $ user_id $ fromJust $ from $ fromJust $ message update
     case update of
         Update { message = Just Message
-          { location = Just location } } -> handleLocation location
+          { location = Just location } } -> handleLocation chatId
         Update { message = Just msg } -> handleMessage msg
         Update { callback_query = Just query } -> handleCallbackQuery query
         _ -> liftIO $ putStrLn $ "Handle update failed. " ++ show update
@@ -124,8 +125,6 @@ updateOrder order response
       , price = Nothing
       }
   | otherwise = order
-
--- flavorReceivedMessage chatId = sendMessageRequest chatId "A Pizza de Mussarela é deliciosa."
 
 flavourOptionsMessage :: ChatId -> SendMessageRequest
 flavourOptionsMessage chatId =
@@ -159,19 +158,22 @@ flavourOptionsKeyboardButton text =
     , ikb_pay = Nothing
   }]
 
+
+orderMessage chatId = sendMessageRequest chatId "Seu pedido foi recebido com sucesso! Obrigado pela preferência."
+
 handleCallbackQuery :: CallbackQuery -> Bot ()
 handleCallbackQuery query = do
   BotConfig{..} <- ask
   let chatId = ChatId $ fromIntegral $ user_id $ cq_from query
       dataText = cq_data query
-      sendFlavourReceivedMessage = sendMessageM (flavourOptionsMessage chatId) >> return ()
+      sendReceivesFlavourMessage = sendMessageM (flavourOptionsMessage chatId) >> return ()
       sendLocationMessage = sendMessageM (locationMessage chatId) >> return ()
+      sendOrderMessage = sendMessageM (orderMessage chatId) >> return ()
 
-      onQuery (Just (T.stripPrefix "/size_option" -> Just _)) = sendFlavourReceivedMessage
+      onQuery (Just (T.stripPrefix "/size_option" -> Just _)) = sendReceivesFlavourMessage
       onQuery (Just (T.stripPrefix "/flavour_option" -> Just _)) = sendLocationMessage
+      onQuery (Just (T.stripPrefix "/paymentway_option" -> Just _)) = sendOrderMessage
   liftIO $ runClient (onQuery dataText) telegramToken manager
-  -- let x  = updateOrder order (cq_data query)
-  -- liftIO $ putStrLn $ show (x)
   return ()
 
 
@@ -189,11 +191,54 @@ handleMessage msg = do
       onCommand (Just (T.stripPrefix "/pedir" -> Just _)) = sendSizeOptionsMessage
       onCommand (Just (T.stripPrefix "/ajuda" -> Just _)) = sendHelpMessage
       onCommand (Just (T.stripPrefix "/sabores" -> Just _)) = sendFlavours allFlavours
-      -- onCommand (Just (T.stripPrefix "/local" -> Just _)) = sendLocationMessage
       onCommand _ = sendHelpMessage
-  liftIO $ putStrLn $ show "Zero"
   liftIO $ runClient (onCommand messageText) telegramToken manager
   return ()
+
+paymentWayMessage :: ChatId -> SendMessageRequest
+paymentWayMessage chatId =
+  SendMessageRequest {
+      message_chat_id = chatId
+    , message_parse_mode = Nothing
+    , message_disable_web_page_preview = Nothing
+    , message_disable_notification = Nothing
+    , message_reply_to_message_id = Nothing
+    , message_text = "Escolha a forma de pagamento."
+    , message_reply_markup = Just paymentWayKeyboard
+}
+
+paymentWays :: [(Text)]
+paymentWays = ["Dinheiro", "Cartão"]
+
+paymentWayKeyboard =
+  ReplyInlineKeyboardMarkup {
+      reply_inline_keyboard = map paymentWayKeyboardButton paymentWays
+  }
+
+paymentWayKeyboardButton :: Text -> [InlineKeyboardButton]
+paymentWayKeyboardButton text =
+  [InlineKeyboardButton {
+      ikb_text = text
+    , ikb_url = Nothing
+    , ikb_callback_data = Just "/paymentway_option"
+    , ikb_switch_inline_query = Nothing
+    , ikb_callback_game = Nothing
+    , ikb_switch_inline_query_current_chat = Nothing
+    , ikb_pay = Nothing
+    }]
+
+locationReceivedMessage chatId = sendMessageRequest chatId "OK! Nós entregamos no seu local."
+
+handleLocation :: ChatId -> Bot ()
+handleLocation chatId = do
+  BotConfig{..} <- ask
+  let sendlocationReceivedMessage = sendMessageM (locationReceivedMessage chatId) >> return ()
+      sendPaymentWayMessage = sendMessageM (paymentWayMessage chatId) >> return ()
+
+  liftIO $ runClient (sendlocationReceivedMessage) telegramToken manager
+  liftIO $ runClient (sendPaymentWayMessage) telegramToken manager
+  return ()
+
 
 pizzaSizeOptions :: [(Text)]
 pizzaSizeOptions = ["Pequena", "Média", "Grande", "Gigante"]
@@ -284,13 +329,3 @@ buildFlavourMessage chatId (flavour, (image, ingredients, price)) =
     , photo_reply_to_message_id = Nothing
     , photo_reply_markup = Nothing
   }
-
-locationReceivedMessage chatId = sendMessageRequest chatId "OK! Nós entregamos no seu local."
-
-handleLocation :: Location -> Bot ()
-handleLocation location = do
-  liftIO $ print $ "Location received."
-  -- BotConfig{..} <- ask
-  -- let sendLocationReceivedMessage = sendMessageM (locationReceivedMessage chatId) >> return ()
-  -- liftIO $ runClient (onCommand sendLocationReceivedMessage) telegramToken manager
-  return ()

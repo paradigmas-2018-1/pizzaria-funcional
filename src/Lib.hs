@@ -124,14 +124,46 @@ updateOrder order response
       }
   | otherwise = order
 
-flavorReceivedMessage chatId = sendMessageRequest chatId "A Pizza de Mussarela é deliciosa."
+-- flavorReceivedMessage chatId = sendMessageRequest chatId "A Pizza de Mussarela é deliciosa."
+
+flavourOptionsMessage :: ChatId -> SendMessageRequest
+flavourOptionsMessage chatId =
+  SendMessageRequest {
+      message_chat_id = chatId
+    , message_parse_mode = Nothing
+    , message_disable_web_page_preview = Nothing
+    , message_disable_notification = Nothing
+    , message_reply_to_message_id = Nothing
+    , message_text = "Escolha o sabor da pizza."
+    , message_reply_markup = Just flavourOptionsKeyboard
+}
+
+flavourOptionsKeyboard =
+  ReplyInlineKeyboardMarkup {
+      reply_inline_keyboard = map flavourOptionsKeyboardButton flavourOptions
+  }
+
+flavourOptions :: [(Text)]
+flavourOptions = ["Calabresa", "Mussarela", "Portuguesa"]
+
+flavourOptionsKeyboardButton :: Text -> [InlineKeyboardButton]
+flavourOptionsKeyboardButton text =
+  [InlineKeyboardButton {
+      ikb_text = text
+    , ikb_url = Nothing
+    , ikb_callback_data = Just "/flavour_option"
+    , ikb_switch_inline_query = Nothing
+    , ikb_callback_game = Nothing
+    , ikb_switch_inline_query_current_chat = Nothing
+    , ikb_pay = Nothing
+  }]
 
 handleCallbackQuery :: CallbackQuery -> Bot ()
 handleCallbackQuery query = do
   BotConfig{..} <- ask
   let chatId = ChatId $ fromIntegral $ user_id $ cq_from query
       dataText = cq_data query
-      sendFlavorReceivedMessage = sendMessageM (flavorReceivedMessage chatId) >> return ()
+      sendFlavorReceivedMessage = sendMessageM (flavourOptionsMessage chatId) >> return ()
 
       onQuery (Just (T.stripPrefix "/size_option" -> Just _)) = sendFlavorReceivedMessage
   -- TODO: Make this function update the actual BotConfig instead of creating

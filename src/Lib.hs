@@ -27,6 +27,7 @@ import Data.Maybe
 import Data.Monoid
 import Web.Telegram.API.Bot
 import System.Environment
+import System.IO
 
 -- Create the API endpoints
 -- "webhook" endpoint will receive updates from the telegram's servers
@@ -163,11 +164,11 @@ handleCallbackQuery query = do
   BotConfig{..} <- ask
   let chatId = ChatId $ fromIntegral $ user_id $ cq_from query
       dataText = cq_data query
-      sendFlavorReceivedMessage = sendMessageM (flavourOptionsMessage chatId) >> return ()
+      sendFlavourReceivedMessage = sendMessageM (flavourOptionsMessage chatId) >> return ()
+      sendLocationMessage = sendMessageM (locationMessage chatId) >> return ()
 
-      onQuery (Just (T.stripPrefix "/size_option" -> Just _)) = sendFlavorReceivedMessage
-  -- TODO: Make this function update the actual BotConfig instead of creating
-  -- a x variable.
+      onQuery (Just (T.stripPrefix "/size_option" -> Just _)) = sendFlavourReceivedMessage
+      onQuery (Just (T.stripPrefix "/flavour_option" -> Just _)) = sendLocationMessage
   liftIO $ runClient (onQuery dataText) telegramToken manager
   -- let x  = updateOrder order (cq_data query)
   -- liftIO $ putStrLn $ show (x)
@@ -188,7 +189,7 @@ handleMessage msg = do
       onCommand (Just (T.stripPrefix "/pedir" -> Just _)) = sendSizeOptionsMessage
       onCommand (Just (T.stripPrefix "/ajuda" -> Just _)) = sendHelpMessage
       onCommand (Just (T.stripPrefix "/sabores" -> Just _)) = sendFlavours allFlavours
-      onCommand (Just (T.stripPrefix "/local" -> Just _)) = sendLocationMessage
+      -- onCommand (Just (T.stripPrefix "/local" -> Just _)) = sendLocationMessage
       onCommand _ = sendHelpMessage
   liftIO $ putStrLn $ show "Zero"
   liftIO $ runClient (onCommand messageText) telegramToken manager

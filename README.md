@@ -11,13 +11,14 @@ The project was created based on the following tutorial: [http://mylifeecho.com/
 
 We used the Telegram Bot SDK for Haskell to implement the integration of the chatbot to the Telegram's Bot API.
 
-## Setup
-TODO
-
-## Features
-TODO
+## Problems
+1. We developed the storage management, but we could not integrate it to the ChatBot before the deadline.
 
 ## Images
+![1](images/1.jpg)
+![2](images/2.jpg)
+![4](images/4.jpg)
+![3](images/3.jpg)
 
 ## References
 1. [Write yourself a Telegram bookstore bot in Haskell](http://mylifeecho.com/dev/telegram-bot-tutorial/)  

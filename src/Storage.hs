@@ -38,19 +38,3 @@ readOrder orderId = B.readFile $ orderFile orderId
 
 getOrder :: Int -> IO (Maybe Order)
 getOrder orderId = decode <$> readOrder orderId
-
--- updateOrder :: Order -> Maybe Text -> Order
--- updateOrder order response
---   | isNothing (size order) =
---       Order {
---         size = response
---       , flavour = Nothing
---       , price = Nothing
---       }
---   | isNothing (flavour order) =
---       Order {
---         size = size order
---       , flavour = response
---       , price = Nothing
---       }
---   | otherwise = order

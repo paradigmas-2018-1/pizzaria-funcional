@@ -28,6 +28,7 @@ import Data.Monoid
 import Web.Telegram.API.Bot
 import System.Environment
 import System.IO
+import Storage
 
 -- Create the API endpoints
 -- "webhook" endpoint will receive updates from the telegram's servers
@@ -51,7 +52,6 @@ startApp = do
       config = BotConfig
         { telegramToken = Token $ T.pack $ "bot" <> telegramToken'
         , manager = manager'
-        , order = createOrder Nothing Nothing Nothing
         }
   run 8080 $ app config
 
@@ -60,25 +60,9 @@ newtype Bot a = Bot
   } deriving ( Functor, Applicative, Monad, MonadIO,
                MonadReader BotConfig, MonadError ServantErr)
 
-data Order = Order
-  {
-    size :: Maybe Text
-  , flavour :: Maybe Text
-  , price :: Maybe Int
-  } deriving (Show, Generic)
-
 data BotConfig = BotConfig
   { telegramToken :: Token
   , manager :: Manager
-  , order :: Order
-  }
-
-createOrder :: Maybe Text -> Maybe Text -> Maybe Int -> Order
-createOrder size flavour price =
-  Order {
-    size = size
-  , flavour = flavour
-  , price = price
   }
 
 app :: BotConfig -> Application
@@ -100,6 +84,13 @@ botServer = handleWebhook
         then handleUpdate update
         else throwError err403
 
+-- chatIdFromMessage :: Message -> ChatId
+-- chatIdFromMessage message = ChatId $ fromIntegral $ user_id $ fromJust $ from message
+--
+-- chatIdFromUpdate :: Update -> ChatId
+-- chatIdFromUpdate update = ChatId chatIdFromMessage $ fromJust $ message update
+
+
 handleUpdate :: Update -> Bot ()
 handleUpdate update = do
     let chatId = ChatId $ fromIntegral $ user_id $ fromJust $ from $ fromJust $ message update
@@ -109,22 +100,6 @@ handleUpdate update = do
         Update { message = Just msg } -> handleMessage msg
         Update { callback_query = Just query } -> handleCallbackQuery query
         _ -> liftIO $ putStrLn $ "Handle update failed. " ++ show update
-
-updateOrder :: Order -> Maybe Text -> Order
-updateOrder order response
-  | isNothing (size order) =
-      Order {
-        size = response
-      , flavour = Nothing
-      , price = Nothing
-      }
-  | isNothing (flavour order) =
-      Order {
-        size = size order
-      , flavour = response
-      , price = Nothing
-      }
-  | otherwise = order
 
 flavourOptionsMessage :: ChatId -> SendMessageRequest
 flavourOptionsMessage chatId =
